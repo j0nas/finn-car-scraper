@@ -7,7 +7,7 @@ import { Ad, OutputRow } from "./types.js";
 let page = 1;
 const limit = pLimit(10);
 const timeout = 10000;
-const link = `https://www.finn.no/car/used/search.html?body_type=3&body_type=2&page=${page}&body_type=5&car_equipment=23&driving_range_from=250&fuel=4&mileage_to=100000&price_to=310000&sales_form=1&sort=PRICE_ASC`;
+const link = `https://www.finn.no/car/used/search.html?body_type=3&body_type=2&body_type=5&page=${page}&car_equipment=23&driving_range_from=250&fuel=4&mileage_to=75000&price_to=310000&sales_form=1&sort=PRICE_ASC`;
 const adsLinkSelector = "a.sf-search-ad-link";
 
 const initPageWithNewContext = async (browser: Browser, link: string) => {
@@ -65,7 +65,7 @@ const getAdDetails = async (browser: Browser, ad: Ad) => {
     await page.getByTestId("price").or(page.locator('span:has-text("Totalpris") + span.u-t3')).innerText()
   );
   const wltp = getDigits(await page.locator('dt:has-text("Rekkevidde (WLTP)") + dd').innerText());
-  const model = getDigits(await page.locator("h1.u-t2.u-word-break").first().innerText());
+  const model = await page.locator("h1.u-t2.u-word-break").first().innerText();
 
   await context.close();
 
@@ -91,7 +91,7 @@ export default (async () => {
 
   let content = header.join(",") + "\n";
   let counter = 0;
-  for await (const { title, url, model, year, km, price, wltp } of rows) {
+  for (const { title, url, model, year, km, price, wltp } of rows) {
     content +=
       [String(counter++), title, url, model, year, km, price, wltp]
         .map((e) => e.replaceAll('"', "").replaceAll(",", ""))
