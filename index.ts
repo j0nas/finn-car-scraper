@@ -7,7 +7,12 @@ import { Ad, OutputRow } from "./types.js";
 let page = 1;
 const limit = pLimit(10);
 const timeout = 10000;
-const link = `https://www.finn.no/car/used/search.html?body_type=3&body_type=2&body_type=5&page=${page}&car_equipment=23&driving_range_from=250&fuel=4&mileage_to=75000&price_to=310000&sales_form=1&sort=PRICE_ASC`;
+
+// Hook, at least 250km WLTP
+// const link = `https://www.finn.no/car/used/search.html?body_type=3&body_type=2&body_type=5&page=${page}&car_equipment=23&driving_range_from=250&fuel=4&mileage_to=75000&price_to=310000&sales_form=1&sort=PRICE_ASC`;
+
+// No hook, at least 2019
+const link = `https://www.finn.no/car/used/search.html?body_type=3&body_type=2&body_type=5&page=${page}&body_type=1&driving_range_from=250&fuel=4&mileage_to=75000&price_to=250000&sales_form=1&sort=PRICE_ASC&year_from=2019`;
 const adsLinkSelector = "a.sf-search-ad-link";
 
 const initPageWithNewContext = async (browser: Browser, link: string) => {
@@ -58,18 +63,23 @@ const getAds = async (page: Page) => {
 };
 
 const getAdDetails = async (browser: Browser, ad: Ad) => {
-  const { page, context } = await initPageWithNewContext(browser, ad.link);
-  const year = getDigits(await page.locator('div:has-text("Modellår") + div.u-strong').innerText());
-  const km = getDigits(await page.locator('div:has-text("Kilometer") + div.u-strong').innerText());
-  const price = getDigits(
-    await page.getByTestId("price").or(page.locator('span:has-text("Totalpris") + span.u-t3')).innerText()
-  );
-  const wltp = getDigits(await page.locator('dt:has-text("Rekkevidde (WLTP)") + dd').innerText());
-  const model = await page.locator("h1.u-t2.u-word-break").first().innerText();
+  try {
+    const { page, context } = await initPageWithNewContext(browser, ad.link);
+    const year = getDigits(await page.locator('div:has-text("Modellår") + div.u-strong').innerText());
+    const km = getDigits(await page.locator('div:has-text("Kilometer") + div.u-strong').innerText());
+    const price = getDigits(
+      await page.getByTestId("price").or(page.locator('span:has-text("Totalpris") + span.u-t3')).innerText()
+    );
+    const wltp = getDigits(await page.locator('dt:has-text("Rekkevidde (WLTP)") + dd').innerText());
+    const model = await page.locator("h1.u-t2.u-word-break").first().innerText();
 
-  await context.close();
+    await context.close();
 
-  return { title: ad.text, url: ad.link, model, year, km, price, wltp };
+    return { title: ad.text, url: ad.link, model, year, km, price, wltp };
+  } catch (e) {
+    console.log(e);
+    return null;
+  }
 };
 
 export default (async () => {
@@ -81,12 +91,14 @@ export default (async () => {
 
   // Get details for each ad
   const rows: OutputRow[] = await Promise.all(
-    ads.map((ad, index) =>
-      limit(() => {
-        console.log(`${index + 1}/${ads.length}`);
-        return getAdDetails(browser, ad);
-      })
-    )
+    ads
+      .map((ad, index) =>
+        limit(() => {
+          console.log(`${index + 1}/${ads.length}`);
+          return getAdDetails(browser, ad);
+        })
+      )
+      .filter(Boolean) as Promise<OutputRow>[]
   );
 
   let content = header.join(",") + "\n";
