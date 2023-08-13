@@ -5,8 +5,8 @@ import pLimit from "p-limit";
 import { Ad, OutputRow } from "./types.js";
 
 let page = 1;
-const limit = pLimit(10);
-const timeout = 10000;
+const limit = pLimit(50);
+const timeout = 30000;
 
 // Hook, at least 250km WLTP
 // const link = `https://www.finn.no/car/used/search.html?body_type=3&body_type=2&body_type=5&page=${page}&car_equipment=23&driving_range_from=250&fuel=4&mileage_to=75000&price_to=310000&sales_form=1&sort=PRICE_ASC`;
@@ -103,11 +103,14 @@ export default (async () => {
 
   let content = header.join(",") + "\n";
   let counter = 0;
-  for (const { title, url, model, year, km, price, wltp } of rows) {
-    content +=
-      [String(counter++), title, url, model, year, km, price, wltp]
-        .map((e) => e.replaceAll('"', "").replaceAll(",", ""))
-        .join(",") + "\n";
+  for (const row of rows) {
+    const { title, url, model, year, km, price, wltp } = row || {};
+    if (title && url && model && year && km && price && wltp) {
+      content +=
+        [String(counter++), title, url, model, year, km, price, wltp]
+          .map((e) => e.replaceAll('"', "").replaceAll(",", ""))
+          .join(",") + "\n";
+    }
   }
 
   fs.writeFileSync("data.csv", content);
